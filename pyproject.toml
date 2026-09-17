@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quantcube-challenge"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "pyarrow>=15.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "mypy>=1.9",
+    "ruff>=0.4",
+    "pandas-stubs>=2.2",
+    "types-requests>=2.31",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quantcube_challenge"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
