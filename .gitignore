@@ -1,0 +1,21 @@
+# Environnement
+.venv/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Outils
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Données (data/raw/ est versionné — cache intermédiaire uniquement)
+data/cache/
+
+# Notebooks
+.ipynb_checkpoints/
