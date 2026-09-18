@@ -24,6 +24,9 @@ dev = [
     "ruff>=0.4",
     "pandas-stubs>=2.2",
     "types-requests>=2.31",
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+    "nbconvert>=7.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -32,6 +35,10 @@ packages = ["src/quantcube_challenge"]
 [tool.mypy]
 strict = true
 python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = "statsmodels.*"
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 88
@@ -42,3 +49,6 @@ select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::statsmodels.tools.sm_exceptions.InterpolationWarning",
+]
