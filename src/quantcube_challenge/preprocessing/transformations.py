@@ -54,3 +54,12 @@ TRANSFORMATION_MAP: dict[TransformationType, TransformationStrategy] = {
     "diff": Diff(),
     "none": Identity(),
 }
+
+
+def to_annualized_growth(gdp: pd.Series) -> pd.Series:
+    """Convertit GDPC1 en taux de croissance trimestriel annualisé (%).
+
+    Fonction standalone réutilisée dans tous les notebooks et modèles.
+    Équivalent à AnnualizedGrowth().apply(gdp).dropna().
+    """
+    return AnnualizedGrowth().apply(gdp).dropna()
