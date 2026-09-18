@@ -11,6 +11,7 @@ from quantcube_challenge.preprocessing.transformations import (
     Identity,
     LogDiff,
     TransformationStrategy,
+    to_annualized_growth,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "TransformationStrategy",
     "StationarityResult",
     "stationarity_report",
+    "to_annualized_growth",
 ]
