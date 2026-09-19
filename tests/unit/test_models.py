@@ -4,7 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quantcube_challenge.models import AR1, BridgeEquation, NaiveLastValue
+from quantcube_challenge.models import (
+    AR1,
+    BridgeEquation,
+    ElasticNetBridge,
+    NaiveLastValue,
+    PCABridge,
+    RidgeBridge,
+)
 
 
 def _toy_series(n: int = 20) -> pd.Series:
@@ -117,3 +124,78 @@ class TestBridgeEquation:
         y, X = _toy_bridge_data(n_quarters=20)
         preds = BridgeEquation().fit_predict(y, X)
         assert len(preds) == 20
+
+
+class TestRidgeBridge:
+    def test_output_length(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = RidgeBridge(n_splits=3).fit_predict(y, X)
+        assert len(preds) == 40
+
+    def test_best_alpha_set_after_fit(self) -> None:
+        y, X = _toy_bridge_data()
+        m = RidgeBridge(n_splits=3)
+        m.fit_predict(y, X)
+        assert m._best_alpha is not None
+
+    def test_coef_keys_match_columns(self) -> None:
+        y, X = _toy_bridge_data()
+        m = RidgeBridge(n_splits=3)
+        m.fit_predict(y, X)
+        assert set(m.coef_.keys()) == {"indpro", "payems"}
+
+    def test_predictions_finite(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = RidgeBridge(n_splits=3).fit_predict(y, X)
+        assert np.all(np.isfinite(preds.to_numpy()))
+
+
+class TestElasticNetBridge:
+    def test_output_length(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = ElasticNetBridge(n_splits=3).fit_predict(y, X)
+        assert len(preds) == 40
+
+    def test_best_params_set_after_fit(self) -> None:
+        y, X = _toy_bridge_data()
+        m = ElasticNetBridge(n_splits=3)
+        m.fit_predict(y, X)
+        assert m._best_alpha is not None
+        assert m._best_l1_ratio is not None
+
+    def test_predictions_finite(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = ElasticNetBridge(n_splits=3).fit_predict(y, X)
+        assert np.all(np.isfinite(preds.to_numpy()))
+
+
+class TestPCABridge:
+    def test_output_length(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = PCABridge(n_components=2).fit_predict(y, X)
+        assert len(preds) == 40
+
+    def test_coef_uses_pc_names(self) -> None:
+        y, X = _toy_bridge_data()
+        m = PCABridge(n_components=2)
+        m.fit_predict(y, X)
+        assert set(m.coef_.keys()) == {"PC1", "PC2"}
+
+    def test_explained_variance_bounded(self) -> None:
+        y, X = _toy_bridge_data()
+        m = PCABridge(n_components=2)
+        m.fit_predict(y, X)
+        assert sum(m.explained_variance_ratio_) <= 1.0 + 1e-9
+
+    def test_loadings_shape(self) -> None:
+        y, X = _toy_bridge_data()
+        m = PCABridge(n_components=2)
+        m.fit_predict(y, X)
+        # 2 indicateurs originaux × 2 composantes
+        assert m.loadings_.shape == (2, 2)
+
+    def test_loadings_index_matches_original_features(self) -> None:
+        y, X = _toy_bridge_data()
+        m = PCABridge(n_components=2)
+        m.fit_predict(y, X)
+        assert list(m.loadings_.index) == ["indpro", "payems"]

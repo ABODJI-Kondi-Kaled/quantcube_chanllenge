@@ -4,5 +4,18 @@ from quantcube_challenge.models.ar import AR1
 from quantcube_challenge.models.base import BaseNowcastModel
 from quantcube_challenge.models.bridge import BridgeEquation
 from quantcube_challenge.models.naive import NaiveLastValue
+from quantcube_challenge.models.regularized import (
+    ElasticNetBridge,
+    PCABridge,
+    RidgeBridge,
+)
 
-__all__ = ["AR1", "BaseNowcastModel", "BridgeEquation", "NaiveLastValue"]
+__all__ = [
+    "AR1",
+    "BaseNowcastModel",
+    "BridgeEquation",
+    "ElasticNetBridge",
+    "NaiveLastValue",
+    "PCABridge",
+    "RidgeBridge",
+]
