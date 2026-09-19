@@ -53,7 +53,7 @@ class BridgeEquation(BaseNowcastModel):
     @property
     def coef_(self) -> dict[str, float]:
         """Coefficients OLS estimés par nom d'indicateur."""
-        return dict(zip(self._feature_names, self._model.coef_.tolist()))
+        return {k: float(v) for k, v in zip(self._feature_names, self._model.coef_)}
 
     @property
     def intercept_(self) -> float:
