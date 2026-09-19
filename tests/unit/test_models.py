@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quantcube_challenge.models import AR1, NaiveLastValue
+from quantcube_challenge.models import AR1, BridgeEquation, NaiveLastValue
 
 
 def _toy_series(n: int = 20) -> pd.Series:
@@ -66,3 +66,54 @@ class TestAR1:
         s = pd.Series([3.0] * 10, index=idx, name="const")
         preds = AR1().fit_predict(s)
         assert np.allclose(preds.to_numpy(), 3.0, atol=1e-6)
+
+
+def _toy_bridge_data(
+    n_quarters: int = 40,
+) -> tuple[pd.Series, pd.DataFrame]:
+    """Série trimestrielle y et indicateurs mensuels X pour tester BridgeEquation."""
+    q_idx = pd.date_range("2000-01-01", periods=n_quarters, freq="QS")
+    m_idx = pd.date_range("2000-01-01", periods=n_quarters * 3, freq="MS")
+    rng = np.random.default_rng(7)
+    y = pd.Series(rng.normal(2.0, 1.0, n_quarters), index=q_idx, name="gdp")
+    X = pd.DataFrame(
+        {
+            "indpro": rng.normal(0.003, 0.01, n_quarters * 3),
+            "payems": rng.normal(0.002, 0.008, n_quarters * 3),
+        },
+        index=m_idx,
+    )
+    return y, X
+
+
+class TestBridgeEquation:
+    def test_output_is_series(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = BridgeEquation().fit_predict(y, X)
+        assert isinstance(preds, pd.Series)
+
+    def test_output_index_quarterly(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = BridgeEquation().fit_predict(y, X)
+        assert len(preds) > 0
+
+    def test_predictions_are_finite(self) -> None:
+        y, X = _toy_bridge_data()
+        preds = BridgeEquation().fit_predict(y, X)
+        assert np.all(np.isfinite(preds.to_numpy()))
+
+    def test_coef_keys_match_columns(self) -> None:
+        y, X = _toy_bridge_data()
+        bridge = BridgeEquation()
+        bridge.fit_predict(y, X)
+        assert set(bridge.coef_.keys()) == {"indpro", "payems"}
+
+    def test_requires_x(self) -> None:
+        y, _ = _toy_bridge_data()
+        with pytest.raises(AssertionError):
+            BridgeEquation().fit_predict(y, X=None)
+
+    def test_length_equals_aligned_quarters(self) -> None:
+        y, X = _toy_bridge_data(n_quarters=20)
+        preds = BridgeEquation().fit_predict(y, X)
+        assert len(preds) == 20
