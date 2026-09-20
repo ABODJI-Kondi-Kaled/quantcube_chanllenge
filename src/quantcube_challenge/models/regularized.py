@@ -33,7 +33,12 @@ class RidgeBridge(BridgeEquation):
     def _fit(self, y: pd.Series, X: pd.DataFrame | None) -> None:
         assert X is not None
         self._feature_names = list(X.columns)
-        tscv = TimeSeriesSplit(n_splits=self._n_splits)
+        n_splits = min(self._n_splits, len(X) - 1)
+        if n_splits < 2:
+            self._best_alpha = 1.0
+            self._model = Ridge(alpha=1.0).fit(X.to_numpy(), y.to_numpy())
+            return
+        tscv = TimeSeriesSplit(n_splits=n_splits)
         gs = GridSearchCV(
             Ridge(),
             param_grid={"alpha": self._alphas},
@@ -71,7 +76,15 @@ class ElasticNetBridge(BridgeEquation):
     def _fit(self, y: pd.Series, X: pd.DataFrame | None) -> None:
         assert X is not None
         self._feature_names = list(X.columns)
-        tscv = TimeSeriesSplit(n_splits=self._n_splits)
+        n_splits = min(self._n_splits, len(X) - 1)
+        if n_splits < 2:
+            self._best_alpha = 1.0
+            self._best_l1_ratio = 0.5
+            self._model = ElasticNet(alpha=1.0, l1_ratio=0.5, max_iter=10_000).fit(
+                X.to_numpy(), y.to_numpy()
+            )
+            return
+        tscv = TimeSeriesSplit(n_splits=n_splits)
         gs = GridSearchCV(
             ElasticNet(max_iter=10_000),
             param_grid={"alpha": self._alphas, "l1_ratio": self._l1_ratios},
@@ -112,11 +125,27 @@ class PCABridge(BridgeEquation):
 
         self._original_feature_names = list(X_q.columns)
         X_scaled = self._scaler.fit_transform(X_q.to_numpy())
+        n_eff = min(self._n_components, len(X_q), X_q.shape[1])
+        self._pca = PCA(n_components=n_eff)
         X_pca = self._pca.fit_transform(X_scaled)
 
-        col_names = [f"PC{i + 1}" for i in range(self._n_components)]
+        col_names = [f"PC{i + 1}" for i in range(n_eff)]
         X_pca_df = pd.DataFrame(X_pca, index=y_clean.index, columns=col_names)
         return y_clean, X_pca_df
+
+    def predict(
+        self, y_context: pd.Series, X_new: pd.DataFrame | None = None
+    ) -> pd.Series:
+        assert X_new is not None
+        X_q = pd.DataFrame(
+            {col: self._aggregation.aggregate(X_new[col]) for col in X_new.columns}
+        ).dropna()
+        if X_q.empty:
+            return pd.Series(dtype=float, name=y_context.name)
+        X_scaled = self._scaler.transform(X_q.to_numpy())
+        X_pca = self._pca.transform(X_scaled)
+        preds = self._model.predict(X_pca)
+        return pd.Series(preds, index=X_q.index, name=y_context.name)
 
     @property
     def explained_variance_ratio_(self) -> list[float]:

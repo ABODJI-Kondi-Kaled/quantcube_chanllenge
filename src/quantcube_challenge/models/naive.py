@@ -22,3 +22,11 @@ class NaiveLastValue(BaseNowcastModel):
         # Prédit y_{t-1} pour chaque t : shift(1) puis forward-fill la dernière obs
         result: pd.Series = y.shift(1).ffill()
         return result
+
+    def predict(
+        self, y_context: pd.Series, X_new: pd.DataFrame | None = None
+    ) -> pd.Series:
+        last_val = float(y_context.dropna().iloc[-1])
+        idx = X_new.index if X_new is not None else y_context.index[-1:]
+        result: pd.Series = pd.Series(last_val, index=idx, name=y_context.name)
+        return result

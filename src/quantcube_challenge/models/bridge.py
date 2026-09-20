@@ -50,6 +50,18 @@ class BridgeEquation(BaseNowcastModel):
         preds = self._model.predict(X.to_numpy())
         return pd.Series(preds, index=y.index, name=y.name)
 
+    def predict(
+        self, y_context: pd.Series, X_new: pd.DataFrame | None = None
+    ) -> pd.Series:
+        assert X_new is not None, "BridgeEquation requiert X_new pour predict."
+        X_q = pd.DataFrame(
+            {col: self._aggregation.aggregate(X_new[col]) for col in X_new.columns}
+        ).dropna()
+        if X_q.empty:
+            return pd.Series(dtype=float, name=y_context.name)
+        preds = self._model.predict(X_q.to_numpy())
+        return pd.Series(preds, index=X_q.index, name=y_context.name)
+
     @property
     def coef_(self) -> dict[str, float]:
         """Coefficients OLS estimés par nom d'indicateur."""

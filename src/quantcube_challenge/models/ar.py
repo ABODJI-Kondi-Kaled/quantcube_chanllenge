@@ -34,3 +34,12 @@ class AR1(BaseNowcastModel):
             X.to_numpy()
         )
         return pd.Series(preds, index=y.index, name=y.name)
+
+    def predict(
+        self, y_context: pd.Series, X_new: pd.DataFrame | None = None
+    ) -> pd.Series:
+        last_y = float(y_context.dropna().iloc[-1])
+        pred = float(self._model.predict([[last_y]])[0])
+        idx = X_new.index if X_new is not None else y_context.index[-1:]
+        result: pd.Series = pd.Series(pred, index=idx, name=y_context.name)
+        return result

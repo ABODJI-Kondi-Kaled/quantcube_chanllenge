@@ -18,6 +18,28 @@ class BaseNowcastModel(ABC):
         self._fit(y_clean, X_clean)
         return self._predict(y_clean, X_clean)
 
+    def fit(
+        self,
+        y: pd.Series,
+        X: pd.DataFrame | None = None,
+    ) -> None:
+        """Entraîne uniquement — sans retourner de prédictions (pour le backtest)."""
+        y_clean, X_clean = self._prepare_features(y, X)
+        self._fit(y_clean, X_clean)
+
+    @abstractmethod
+    def predict(
+        self,
+        y_context: pd.Series,
+        X_new: pd.DataFrame | None = None,
+    ) -> pd.Series:
+        """Prédit sur nouvelles données après fit (pour le backtest).
+
+        y_context : historique récent de y (pour les modèles à lag)
+        X_new     : indicateurs à la fréquence originale pour la période cible
+        """
+        ...
+
     @abstractmethod
     def _prepare_features(
         self,
