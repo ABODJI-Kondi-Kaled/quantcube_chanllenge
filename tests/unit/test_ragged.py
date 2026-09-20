@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from quantcube_challenge.evaluation import ExpandingWindow, ragged_x_test
 from quantcube_challenge.evaluation.backtest import _quarter_month_cutoff
