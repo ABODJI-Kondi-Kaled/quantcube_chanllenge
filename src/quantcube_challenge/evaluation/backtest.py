@@ -34,22 +34,59 @@ def _aggregate_x(X: pd.DataFrame, aggregation: AggregationStrategy) -> pd.DataFr
     return pd.DataFrame({col: aggregation.aggregate(X[col]) for col in X.columns})
 
 
+def _quarter_month_cutoff(
+    quarter_start: pd.Timestamp, month_in_quarter: int
+) -> pd.Timestamp:
+    """Retourne la fin du n-ième mois d'un trimestre donné."""
+    m = quarter_start.month + month_in_quarter - 1
+    y = quarter_start.year + (m - 1) // 12
+    m = ((m - 1) % 12) + 1
+    return pd.Timestamp(y, m, 1) + pd.offsets.MonthEnd(0)
+
+
+def ragged_x_test(
+    X: pd.DataFrame,
+    quarter_start: pd.Timestamp,
+    month_in_quarter: int,
+    aggregation: AggregationStrategy,
+) -> pd.DataFrame | None:
+    """Agrège X pour un trimestre partiel (ragged edge).
+
+    Retourne un DataFrame à index trimestriel avec la moyenne des
+    `month_in_quarter` premiers mois du trimestre `quarter_start`.
+    Retourne None si aucune donnée n'est disponible dans la fenêtre.
+    """
+    cutoff = _quarter_month_cutoff(quarter_start, month_in_quarter)
+    mask = (X.index >= quarter_start) & (X.index <= cutoff)
+    x_raw = X.loc[mask]
+    if x_raw.empty:
+        return None
+    x_agg = pd.DataFrame(
+        {col: aggregation.aggregate(x_raw[col]) for col in x_raw.columns}
+    )
+    x_q = x_agg.loc[x_agg.index == quarter_start]
+    return x_q if not x_q.empty else None
+
+
 class ExpandingWindow:
     """Backtest en fenêtre extensible (expanding window).
 
     À chaque pas t, entraîne sur [début, t] et prédit t+1.
-    C'est l'évaluation de référence pour les séries temporelles.
+    `month_in_quarter` simule le ragged edge : 1 = seulement le premier mois
+    du trimestre disponible, 2 = deux mois, 3 = trimestre complet (défaut).
     """
 
     def __init__(
         self,
         min_train: int = 20,
         aggregation: AggregationStrategy | None = None,
+        month_in_quarter: int = 3,
     ) -> None:
         self._min_train = min_train
         self._aggregation: AggregationStrategy = (
             aggregation if aggregation is not None else MeanAggregation()
         )
+        self._month_in_quarter = month_in_quarter
 
     def run(
         self,
@@ -70,11 +107,17 @@ class ExpandingWindow:
             x_train = (
                 X_q.loc[X_q.index <= train_end].dropna() if X_q is not None else None
             )
-            x_test = (
-                X_q.loc[[test_date]]
-                if X_q is not None and test_date in X_q.index
-                else None
-            )
+
+            if self._month_in_quarter == 3 or X is None:
+                x_test: pd.DataFrame | None = (
+                    X_q.loc[[test_date]]
+                    if X_q is not None and test_date in X_q.index
+                    else None
+                )
+            else:
+                x_test = ragged_x_test(
+                    X, test_date, self._month_in_quarter, self._aggregation
+                )
 
             if x_train is not None and x_train.empty:
                 continue
